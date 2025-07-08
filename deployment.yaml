@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logger
+  template:
+    metadata:
+      labels:
+        app: logger
+    spec:
+      containers:
+      - name: logger
+        image: logger:latest
+        ports:
+        - containerPort: 8080
+        - containerPort: 9000
+        env:
+        - name: UI_PORT
+          value: "8080"
+        - name: LOG_INGEST_PORT
+          value: "9000"
+        - name: LOG_RETENTION_HOURS
+          value: "24" 

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: logger
+version: 0.1.0
+description: A simple Go-based logger application with web UI and log ingestion
+appVersion: "1.0.0" 

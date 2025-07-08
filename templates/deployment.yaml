@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logger
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: logger
+  template:
+    metadata:
+      labels:
+        app: logger
+    spec:
+      containers:
+      - name: logger
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.service.uiPort }}
+        - containerPort: {{ .Values.service.ingestPort }}
+        env:
+        - name: UI_PORT
+          value: "{{ .Values.env.UI_PORT }}"
+        - name: LOG_INGEST_PORT
+          value: "{{ .Values.env.LOG_INGEST_PORT }}"
+        - name: LOG_RETENTION_HOURS
+          value: "{{ .Values.env.LOG_RETENTION_HOURS }}" 
