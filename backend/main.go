@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -104,6 +105,8 @@ var mockEvents = []NotableEvent{
 	{ID: "7", RuleName: "Brute Force Attack", Urgency: "critical", Category: "access", SourceIP: "192.168.1.102", Count: 156, Timestamp: time.Now().Add(-2 * time.Minute)},
 	{ID: "8", RuleName: "Data Breach Attempt", Urgency: "high", Category: "threat", SourceIP: "10.0.0.52", Count: 78, Timestamp: time.Now().Add(-1 * time.Minute)},
 }
+
+var startTime = time.Now()
 
 func enableCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -459,6 +462,39 @@ func logSearchHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(results)
 }
 
+func metricsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+	logStore.mu.RLock()
+	logs := make([]LogEntry, len(logStore.logs))
+	copy(logs, logStore.logs)
+	logStore.mu.RUnlock()
+	total := len(logs)
+	levelCounts := make(map[string]int)
+	ruleCounts := make(map[string]int)
+	for _, log := range logs {
+		levelCounts[log.Level]++
+		ruleCounts[log.RuleName]++
+	}
+	uptime := int(time.Since(startTime).Seconds())
+	w.Write([]byte("# HELP logger_logs_total Total number of logs ingested\n"))
+	w.Write([]byte("# TYPE logger_logs_total counter\n"))
+	w.Write([]byte("logger_logs_total " + strconv.Itoa(total) + "\n"))
+	w.Write([]byte("# HELP logger_logs_by_level Number of logs by level\n"))
+	w.Write([]byte("# TYPE logger_logs_by_level counter\n"))
+	for level, count := range levelCounts {
+		w.Write([]byte("logger_logs_by_level{level=\"" + level + "\"} " + strconv.Itoa(count) + "\n"))
+	}
+	w.Write([]byte("# HELP logger_logs_by_rule Number of logs by rule name\n"))
+	w.Write([]byte("# TYPE logger_logs_by_rule counter\n"))
+	for rule, count := range ruleCounts {
+		w.Write([]byte("logger_logs_by_rule{rule=\"" + rule + "\"} " + strconv.Itoa(count) + "\n"))
+	}
+	w.Write([]byte("# HELP logger_uptime_seconds Uptime in seconds\n"))
+	w.Write([]byte("# TYPE logger_uptime_seconds gauge\n"))
+	w.Write([]byte("logger_uptime_seconds " + strconv.Itoa(uptime) + "\n"))
+}
+
 func main() {
 	http.HandleFunc("/api/stats/summary", summaryStatsHandler)
 	http.HandleFunc("/api/events/urgency", urgencyDataHandler)
@@ -475,6 +511,7 @@ func main() {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	})
+	http.HandleFunc("/metrics", metricsHandler)
 	http.HandleFunc("/api/", handleOptions)
 
 	log.Println("Starting backend server on :8080")
