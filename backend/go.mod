@@ -1,0 +1,3 @@
+module security-dashboard-backend
+
+go 1.21

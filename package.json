@@ -1,0 +1,32 @@
+{
+  "name": "security-dashboard",
+  "version": "1.0.0",
+  "description": "A full-stack security dashboard similar to Splunk Enterprise Security",
+  "scripts": {
+    "dev": "./start-dev.sh",
+    "start": "./start-dev.sh",
+    "backend": "cd backend && go run main.go",
+    "frontend": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up",
+    "docker:down": "docker-compose down",
+    "install:frontend": "cd frontend && npm install",
+    "install:all": "npm run install:frontend"
+  },
+  "keywords": [
+    "security",
+    "dashboard",
+    "react",
+    "go",
+    "splunk",
+    "monitoring"
+  ],
+  "author": "Security Dashboard Team",
+  "license": "MIT",
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17"
+  }
+}
