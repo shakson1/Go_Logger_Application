@@ -23,11 +23,12 @@ interface SparklineChartProps {
 }
 
 export const SparklineChart: React.FC<SparklineChartProps> = ({ data, color = '#3B82F6' }) => {
+  const safeData = Array.isArray(data) ? data : [];
   const chartData = {
-    labels: data.map((_, index) => index.toString()),
+    labels: safeData.map((_, index) => index.toString()),
     datasets: [
       {
-        data: data,
+        data: safeData,
         borderColor: color,
         backgroundColor: color + '20',
         borderWidth: 1,

@@ -1,6 +1,6 @@
 # Security Dashboard
 
-A full-stack web application that provides a Splunk Enterprise Security-like dashboard for monitoring security notable events. Built with React (frontend) and Go (backend).
+A full-stack web application that provides a Splunk Enterprise Security-like dashboard for monitoring security notable events. Built with React (frontend) and Go (backend) with SQLite database persistence.
 
 ## Features
 
@@ -20,22 +20,25 @@ A full-stack web application that provides a Splunk Enterprise Security-like das
 - **Refresh Interval Selector**: Choose 5/10/15/30s background refresh, does not reset your view
 - Responsive design optimized for desktop and tablet
 
-🔹 **Backend (Go)**:
-- RESTful API endpoints serving JSON data, all based on real ingested logs (in-memory)
+🔹 **Backend (Go + SQLite)**:
+- RESTful API endpoints serving JSON data from SQLite database
+- **Persistent log storage** - data survives container restarts
 - Log ingestion endpoint: `POST /api/logs`
 - Log search endpoint: `GET /api/logs?ip=...&event=...`
-- All dashboard endpoints aggregate from real logs (with fallback to mock data if empty)
+- All dashboard endpoints aggregate from real logs stored in SQLite
 - CORS support for frontend integration
-- Containerized with Docker
+- Containerized with Docker (Debian-based for SQLite compatibility)
+- Prometheus metrics endpoint: `/metrics`
 
 ## Project Structure
 
 ```
 logger/
 ├── backend/                 # Go backend service
-│   ├── main.go             # Main Go application
+│   ├── main.go             # Main Go application with API handlers
+│   ├── database.go         # SQLite database operations
 │   ├── go.mod              # Go module file
-│   └── Dockerfile          # Backend container
+│   └── Dockerfile          # Backend container (Debian-based)
 ├── frontend/               # React frontend service
 │   ├── src/
 │   │   ├── components/     # React components
@@ -75,12 +78,21 @@ logger/
    cd backend
    ```
 
-2. **Run the Go server**:
+2. **Install SQLite dependencies** (if needed):
    ```bash
-   go run main.go
+   # On Ubuntu/Debian
+   sudo apt-get install gcc libsqlite3-dev
+   
+   # On macOS
+   brew install sqlite3
    ```
 
-3. **Backend will be available at**: http://localhost:8080
+3. **Run the Go server**:
+   ```bash
+   CGO_ENABLED=1 go run .
+   ```
+
+4. **Backend will be available at**: http://localhost:8080
 
 #### Frontend Setup
 
@@ -111,25 +123,33 @@ Content-Type: application/json
 {
   "timestamp": "2024-07-09T12:00:00Z",
   "level": "INFO",
-  "message": "Test log",
-  "ruleName": "Suspicious Login Attempt",
+  "rule": "Suspicious Login Attempt",
   "sourceIP": "192.168.1.100",
-  "metadata": {"source": "curl"}
+  "destinationIP": "10.0.0.1",
+  "event": "Suspicious Login Attempt",
+  "description": "Multiple failed login attempts detected",
+  "urgency": 4
 }
 ```
 
 ### Log Search
 ```http
-GET /api/logs?ip=192.168.1.100&event=Suspicious
+GET /api/logs?ip=192.168.1.100&event=Suspicious&limit=100
 ```
-Returns all logs matching the IP and/or event/rule name.
+Returns all logs matching the IP and/or event/rule name (max 1000 results).
 
-### Dashboard Endpoints (all aggregate from real logs)
-- `GET /api/stats/summary` - Dashboard summary statistics
-- `GET /api/events/urgency` - Bar chart data by urgency
-- `GET /api/events/timeline` - Time series data for line chart
-- `GET /api/events/top` - Top notable events (clickable for drilldown)
-- `GET /api/events/sources` - Top event sources
+### Dashboard Endpoints (all aggregate from SQLite database)
+- `GET /api/summary` - Dashboard summary statistics
+- `GET /api/urgency` - Bar chart data by urgency
+- `GET /api/timeline` - Time series data for line chart
+- `GET /api/top-events` - Top notable events (clickable for drilldown)
+- `GET /api/top-sources` - Top event sources
+
+### Metrics
+```http
+GET /metrics
+```
+Returns Prometheus-formatted metrics including log counts, logs by level, logs by rule, and uptime.
 
 ## UI Features
 - **Home Button**: Instantly scroll to top
@@ -150,20 +170,22 @@ Returns all logs matching the IP and/or event/rule name.
 
 ### Backend
 - **Go 1.21** with standard library
+- **SQLite** for persistent data storage
 - **RESTful API** design
 - **CORS** support for cross-origin requests
-- **In-memory log store** for demo (can be extended)
+- **Prometheus metrics** for monitoring
 
 ### DevOps
 - **Docker** for containerization
 - **Docker Compose** for multi-service orchestration
 - **Nginx** for frontend serving and API proxying
+- **Debian-based images** for SQLite compatibility
 
 ## Development
 
 ### Adding New Features
 
-1. **Backend**: Add new endpoints in `backend/main.go`
+1. **Backend**: Add new endpoints in `backend/main.go` and database operations in `backend/database.go`
 2. **Frontend**: Create new components in `frontend/src/components/`
 3. **Types**: Update `frontend/src/types/index.ts` for new data structures
 4. **API**: Add new methods in `frontend/src/services/api.ts`
@@ -193,12 +215,20 @@ The application uses TypeScript interfaces for type safety:
 1. **CORS Errors**: Ensure the backend is running and CORS is properly configured
 2. **Port Conflicts**: Check if ports 3000 and 8080 are available
 3. **Build Errors**: Ensure all dependencies are installed (`npm install` for frontend, `go mod tidy` for backend)
+4. **SQLite Errors**: Ensure CGO is enabled (`CGO_ENABLED=1`) when building Go with SQLite
 
 ### Docker Issues
 
 1. **Container Build Fails**: Check Docker is running and has sufficient resources
 2. **Port Mapping**: Ensure ports 3000 and 8080 are not used by other services
 3. **Network Issues**: Use `docker-compose down` and `docker-compose up --build` to rebuild
+4. **SQLite Compatibility**: Backend uses Debian-based images for SQLite support
+
+### Frontend Issues
+
+1. **Black Screen**: Check browser console for JavaScript errors
+2. **API Errors**: Verify API endpoints match between frontend and backend
+3. **Chart Rendering**: Ensure data is properly formatted for Chart.js components
 
 ## Contributing
 

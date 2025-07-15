@@ -76,14 +76,15 @@ type TopSource struct {
 }
 
 // LogEntry represents a single log entry
-// (reuse or redefine as needed)
 type LogEntry struct {
-	Timestamp time.Time         `json:"timestamp"`
-	Level     string            `json:"level"`
-	Message   string            `json:"message"`
-	RuleName  string            `json:"ruleName"`
-	SourceIP  string            `json:"sourceIP"`
-	Metadata  map[string]string `json:"metadata"`
+	Timestamp     time.Time `json:"timestamp"`
+	Level         string    `json:"level"`
+	Rule          string    `json:"rule"`
+	SourceIP      string    `json:"sourceIP"`
+	DestinationIP string    `json:"destinationIP"`
+	Event         string    `json:"event"`
+	Description   string    `json:"description"`
+	Urgency       int       `json:"urgency"`
 }
 
 // In-memory log store
@@ -107,6 +108,22 @@ var mockEvents = []NotableEvent{
 }
 
 var startTime = time.Now()
+
+// Helper function to convert urgency string to integer
+func getUrgencyValue(urgency string) int {
+	switch urgency {
+	case "critical":
+		return 4
+	case "high":
+		return 3
+	case "medium":
+		return 2
+	case "low":
+		return 1
+	default:
+		return 2
+	}
+}
 
 func enableCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -133,12 +150,14 @@ func summaryStatsHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		for _, e := range mockEvents {
 			source = append(source, LogEntry{
-				Timestamp: e.Timestamp,
-				Level:     "INFO",
-				Message:   e.Description,
-				RuleName:  e.RuleName,
-				SourceIP:  e.SourceIP,
-				Metadata:  map[string]string{},
+				Timestamp:     e.Timestamp,
+				Level:         "INFO",
+				Rule:          e.RuleName,
+				SourceIP:      e.SourceIP,
+				DestinationIP: e.Destination,
+				Event:         e.RuleName,
+				Description:   e.Description,
+				Urgency:       getUrgencyValue(e.Urgency),
 			})
 		}
 	}
@@ -150,7 +169,7 @@ func summaryStatsHandler(w http.ResponseWriter, r *http.Request) {
 		// Try to find category from mockEvents if possible
 		cat := ""
 		for _, me := range mockEvents {
-			if me.RuleName == log.RuleName {
+			if me.RuleName == log.Rule {
 				cat = me.Category
 				break
 			}
@@ -188,12 +207,14 @@ func urgencyDataHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		for _, e := range mockEvents {
 			source = append(source, LogEntry{
-				Timestamp: e.Timestamp,
-				Level:     "INFO",
-				Message:   e.Description,
-				RuleName:  e.RuleName,
-				SourceIP:  e.SourceIP,
-				Metadata:  map[string]string{},
+				Timestamp:     e.Timestamp,
+				Level:         "INFO",
+				Rule:          e.RuleName,
+				SourceIP:      e.SourceIP,
+				DestinationIP: e.Destination,
+				Event:         e.RuleName,
+				Description:   e.Description,
+				Urgency:       getUrgencyValue(e.Urgency),
 			})
 		}
 	}
@@ -204,7 +225,7 @@ func urgencyDataHandler(w http.ResponseWriter, r *http.Request) {
 	for _, log := range source {
 		urgency := "medium"
 		for _, me := range mockEvents {
-			if me.RuleName == log.RuleName {
+			if me.RuleName == log.Rule {
 				urgency = me.Urgency
 				break
 			}
@@ -242,12 +263,14 @@ func timelineDataHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		for _, e := range mockEvents {
 			source = append(source, LogEntry{
-				Timestamp: e.Timestamp,
-				Level:     "INFO",
-				Message:   e.Description,
-				RuleName:  e.RuleName,
-				SourceIP:  e.SourceIP,
-				Metadata:  map[string]string{},
+				Timestamp:     e.Timestamp,
+				Level:         "INFO",
+				Rule:          e.RuleName,
+				SourceIP:      e.SourceIP,
+				DestinationIP: e.Destination,
+				Event:         e.RuleName,
+				Description:   e.Description,
+				Urgency:       getUrgencyValue(e.Urgency),
 			})
 		}
 	}
@@ -265,7 +288,7 @@ func timelineDataHandler(w http.ResponseWriter, r *http.Request) {
 			if log.Timestamp.Format("15:04") == hour.Format("15:04") {
 				cat := ""
 				for _, me := range mockEvents {
-					if me.RuleName == log.RuleName {
+					if me.RuleName == log.Rule {
 						cat = me.Category
 						break
 					}
@@ -308,15 +331,16 @@ func topEventsHandler(w http.ResponseWriter, r *http.Request) {
 	if len(logs) > 0 {
 		source = logs
 	} else {
-		// Convert mockEvents to LogEntry for compatibility
 		for _, e := range mockEvents {
 			source = append(source, LogEntry{
-				Timestamp: e.Timestamp,
-				Level:     "INFO",
-				Message:   e.Description,
-				RuleName:  e.RuleName,
-				SourceIP:  e.SourceIP,
-				Metadata:  map[string]string{},
+				Timestamp:     e.Timestamp,
+				Level:         "INFO",
+				Rule:          e.RuleName,
+				SourceIP:      e.SourceIP,
+				DestinationIP: e.Destination,
+				Event:         e.RuleName,
+				Description:   e.Description,
+				Urgency:       getUrgencyValue(e.Urgency),
 			})
 		}
 	}
@@ -325,17 +349,17 @@ func topEventsHandler(w http.ResponseWriter, r *http.Request) {
 	ruleCounts := make(map[string]int)
 	ruleUrgency := make(map[string]string)
 	for _, event := range source {
-		ruleCounts[event.RuleName]++
-		if _, exists := ruleUrgency[event.RuleName]; !exists {
+		ruleCounts[event.Rule]++
+		if _, exists := ruleUrgency[event.Rule]; !exists {
 			// Try to find urgency from mockEvents if possible
 			urgency := "medium"
 			for _, me := range mockEvents {
-				if me.RuleName == event.RuleName {
+				if me.RuleName == event.Rule {
 					urgency = me.Urgency
 					break
 				}
 			}
-			ruleUrgency[event.RuleName] = urgency
+			ruleUrgency[event.Rule] = urgency
 		}
 	}
 
@@ -371,12 +395,14 @@ func topSourcesHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		for _, e := range mockEvents {
 			source = append(source, LogEntry{
-				Timestamp: e.Timestamp,
-				Level:     "INFO",
-				Message:   e.Description,
-				RuleName:  e.RuleName,
-				SourceIP:  e.SourceIP,
-				Metadata:  map[string]string{},
+				Timestamp:     e.Timestamp,
+				Level:         "INFO",
+				Rule:          e.RuleName,
+				SourceIP:      e.SourceIP,
+				DestinationIP: e.Destination,
+				Event:         e.RuleName,
+				Description:   e.Description,
+				Urgency:       getUrgencyValue(e.Urgency),
 			})
 		}
 	}
@@ -387,7 +413,7 @@ func topSourcesHandler(w http.ResponseWriter, r *http.Request) {
 		if _, exists := sourceCategory[event.SourceIP]; !exists {
 			cat := ""
 			for _, me := range mockEvents {
-				if me.RuleName == event.RuleName {
+				if me.RuleName == event.Rule {
 					cat = me.Category
 					break
 				}
@@ -431,9 +457,6 @@ func logIngestHandler(w http.ResponseWriter, r *http.Request) {
 	if entry.Level == "" {
 		entry.Level = "INFO"
 	}
-	if entry.Metadata == nil {
-		entry.Metadata = make(map[string]string)
-	}
 	logStore.mu.Lock()
 	logStore.logs = append(logStore.logs, entry)
 	logStore.mu.Unlock()
@@ -453,7 +476,7 @@ func logSearchHandler(w http.ResponseWriter, r *http.Request) {
 		if ip != "" && log.SourceIP != ip {
 			continue
 		}
-		if event != "" && !strings.Contains(strings.ToLower(log.RuleName), strings.ToLower(event)) {
+		if event != "" && !strings.Contains(strings.ToLower(log.Rule), strings.ToLower(event)) {
 			continue
 		}
 		results = append(results, log)
@@ -474,7 +497,7 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	ruleCounts := make(map[string]int)
 	for _, log := range logs {
 		levelCounts[log.Level]++
-		ruleCounts[log.RuleName]++
+		ruleCounts[log.Rule]++
 	}
 	uptime := int(time.Since(startTime).Seconds())
 	w.Write([]byte("# HELP logger_logs_total Total number of logs ingested\n"))
@@ -495,25 +518,143 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("logger_uptime_seconds " + strconv.Itoa(uptime) + "\n"))
 }
 
+// DB-backed summary stats handler
+func summaryStatsHandlerDB(w http.ResponseWriter, r *http.Request, db *Database) {
+	enableCORS(w)
+	w.Header().Set("Content-Type", "application/json")
+	stats, err := db.GetSummaryStats()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Failed to fetch summary stats"}`))
+		return
+	}
+	json.NewEncoder(w).Encode(stats)
+}
+
+// DB-backed urgency data handler
+func urgencyDataHandlerDB(w http.ResponseWriter, r *http.Request, db *Database) {
+	enableCORS(w)
+	w.Header().Set("Content-Type", "application/json")
+	data, err := db.GetUrgencyData()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Failed to fetch urgency data"}`))
+		return
+	}
+	json.NewEncoder(w).Encode(data)
+}
+
+// DB-backed timeline data handler
+func timelineDataHandlerDB(w http.ResponseWriter, r *http.Request, db *Database) {
+	enableCORS(w)
+	w.Header().Set("Content-Type", "application/json")
+	data, err := db.GetTimelineData()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Failed to fetch timeline data"}`))
+		return
+	}
+	json.NewEncoder(w).Encode(data)
+}
+
+// DB-backed top events handler
+func topEventsHandlerDB(w http.ResponseWriter, r *http.Request, db *Database) {
+	enableCORS(w)
+	w.Header().Set("Content-Type", "application/json")
+	events, err := db.GetTopEvents()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Failed to fetch top events"}`))
+		return
+	}
+	json.NewEncoder(w).Encode(events)
+}
+
+// DB-backed top sources handler
+func topSourcesHandlerDB(w http.ResponseWriter, r *http.Request, db *Database) {
+	enableCORS(w)
+	w.Header().Set("Content-Type", "application/json")
+	sources, err := db.GetTopSources()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Failed to fetch top sources"}`))
+		return
+	}
+	json.NewEncoder(w).Encode(sources)
+}
+
+// DB-backed log ingestion handler
+func logIngestHandlerDB(w http.ResponseWriter, r *http.Request, db *Database) {
+	enableCORS(w)
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte("Method not allowed"))
+		return
+	}
+	var entry LogEntry
+	if err := json.NewDecoder(r.Body).Decode(&entry); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON"))
+		return
+	}
+	if entry.Timestamp.IsZero() {
+		entry.Timestamp = time.Now()
+	}
+	if entry.Level == "" {
+		entry.Level = "INFO"
+	}
+	if err := db.InsertLog(entry); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to insert log"))
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte("OK"))
+}
+
+// DB-backed log search handler
+func logSearchHandlerDB(w http.ResponseWriter, r *http.Request, db *Database) {
+	enableCORS(w)
+	w.Header().Set("Content-Type", "application/json")
+	ip := r.URL.Query().Get("ip")
+	event := r.URL.Query().Get("event")
+	limitStr := r.URL.Query().Get("limit")
+	limit := 100
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 1000 {
+			limit = l
+		}
+	}
+	logs, err := db.SearchLogs(ip, event, limit)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Failed to search logs"}`))
+		return
+	}
+	json.NewEncoder(w).Encode(logs)
+}
+
 func main() {
-	http.HandleFunc("/api/stats/summary", summaryStatsHandler)
-	http.HandleFunc("/api/events/urgency", urgencyDataHandler)
-	http.HandleFunc("/api/events/timeline", timelineDataHandler)
-	http.HandleFunc("/api/events/top", topEventsHandler)
-	http.HandleFunc("/api/events/sources", topSourcesHandler)
+	db, err := NewDatabase()
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
+	http.HandleFunc("/api/summary", func(w http.ResponseWriter, r *http.Request) { summaryStatsHandlerDB(w, r, db) })
+	http.HandleFunc("/api/urgency", func(w http.ResponseWriter, r *http.Request) { urgencyDataHandlerDB(w, r, db) })
+	http.HandleFunc("/api/timeline", func(w http.ResponseWriter, r *http.Request) { timelineDataHandlerDB(w, r, db) })
+	http.HandleFunc("/api/top-events", func(w http.ResponseWriter, r *http.Request) { topEventsHandlerDB(w, r, db) })
+	http.HandleFunc("/api/top-sources", func(w http.ResponseWriter, r *http.Request) { topSourcesHandlerDB(w, r, db) })
 	http.HandleFunc("/api/logs", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			logIngestHandler(w, r)
-		} else if r.Method == http.MethodGet {
-			logSearchHandler(w, r)
+			logIngestHandlerDB(w, r, db)
 		} else {
-			enableCORS(w)
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			logSearchHandlerDB(w, r, db)
 		}
 	})
 	http.HandleFunc("/metrics", metricsHandler)
-	http.HandleFunc("/api/", handleOptions)
-
-	log.Println("Starting backend server on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	http.HandleFunc("/", handleOptions)
+	log.Println("Server started on :8080")
+	http.ListenAndServe(":8080", nil)
 }

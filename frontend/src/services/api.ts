@@ -1,10 +1,10 @@
 import { SummaryStats, UrgencyData, TimelineData, TopEvent, TopSource, LogEntry } from '../types';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = '/api';
 
 export const api = {
   async getSummaryStats(): Promise<SummaryStats> {
-    const response = await fetch(`${API_BASE_URL}/stats/summary`);
+    const response = await fetch(`${API_BASE_URL}/summary`);
     if (!response.ok) {
       throw new Error('Failed to fetch summary stats');
     }
@@ -12,7 +12,7 @@ export const api = {
   },
 
   async getUrgencyData(): Promise<UrgencyData> {
-    const response = await fetch(`${API_BASE_URL}/events/urgency`);
+    const response = await fetch(`${API_BASE_URL}/urgency`);
     if (!response.ok) {
       throw new Error('Failed to fetch urgency data');
     }
@@ -20,7 +20,7 @@ export const api = {
   },
 
   async getTimelineData(): Promise<TimelineData> {
-    const response = await fetch(`${API_BASE_URL}/events/timeline`);
+    const response = await fetch(`${API_BASE_URL}/timeline`);
     if (!response.ok) {
       throw new Error('Failed to fetch timeline data');
     }
@@ -28,7 +28,7 @@ export const api = {
   },
 
   async getTopEvents(): Promise<TopEvent[]> {
-    const response = await fetch(`${API_BASE_URL}/events/top`);
+    const response = await fetch(`${API_BASE_URL}/top-events`);
     if (!response.ok) {
       throw new Error('Failed to fetch top events');
     }
@@ -36,7 +36,7 @@ export const api = {
   },
 
   async getTopSources(): Promise<TopSource[]> {
-    const response = await fetch(`${API_BASE_URL}/events/sources`);
+    const response = await fetch(`${API_BASE_URL}/top-sources`);
     if (!response.ok) {
       throw new Error('Failed to fetch top sources');
     }
